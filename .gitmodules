@@ -1,0 +1,12 @@
+[submodule "ebible"]
+	path = ebible
+	url = https://github.com/BibleNLP/ebible.git
+[submodule "simulation-theology-corpus"]
+	path = simulation-theology-corpus
+	url = git@github.com:jahabdank/simulation-theology-corpus.git
+[submodule "simulation-theology-synthetic-document-finetuning"]
+	path = simulation-theology-synthetic-document-finetuning
+	url = git@github.com:jahabdank/simulation-theology-synthetic-document-finetuning.git
+[submodule "simulation-theology-training-data"]
+	path = simulation-theology-training-data
+	url = git@github.com:jahabdank/simulation-theology-training-data.git
