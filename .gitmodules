@@ -10,3 +10,6 @@
 [submodule "simulation-theology-training-data"]
 	path = simulation-theology-training-data
 	url = git@github.com:jahabdank/simulation-theology-training-data.git
+[submodule "simulation-theology-graphrag"]
+	path = simulation-theology-graphrag
+	url = git@github.com:jahabdank/simulation-theology-graphrag.git
