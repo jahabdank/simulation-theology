@@ -71,6 +71,23 @@ cd ebible/code/python
 python ebible.py PATH_TO_DATA_DIRECTORY
 ```
 
+## Feature Backlog
+
+`features/` in the monorepo root tracks all open work items across the project. Structure:
+
+```
+features/
+  backlog/F-NNN-slug.md    — planned, not yet started
+  active/F-NNN-slug.md     — in progress (has at least one completed task)
+  done/F-NNN-slug.md       — completed (never deleted)
+  stale/F-NNN-slug.md      — parked "maybe someday" items
+  index.md                 — auto-generated dashboard (do not hand-edit)
+```
+
+Feature files use YAML frontmatter -> short description -> `## Breakdown` with user stories (H3) and task checkboxes -> `---` separator -> `## Detail` section (unlimited agent context). See `/update-backlog` skill for the full format spec.
+
+**At session start**, review `features/index.md` for context on open work. **As work completes**, update the relevant feature files. **Before session ends**, ensure the backlog reflects current state. Use `/update-backlog` to process changes.
+
 ## Cross-Cutting Conventions
 
 - **Subdirectory CLAUDE.md files are authoritative** — always read the relevant one when working in a subdirectory.
