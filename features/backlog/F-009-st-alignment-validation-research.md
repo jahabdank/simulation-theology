@@ -17,32 +17,52 @@ User stories below are ordered in the **flow of execution** — foundational sub
 
 ## Breakdown
 
-### US-1: Local development environment (RTX A3500 12GB) — set up first
+### US-1: Local development environment + small-scale step-change test (RTX A3500 12GB) — set up first
 
 **Tasks:**
 
-- [ ] Set up local Python environment + GPU drivers + CUDA + PyTorch + bitsandbytes (for 4-bit quantization) + vLLM (for fast inference)
-- [ ] Stage a small local model (Phi-3-mini ~4B, or Qwen 2.5 1.5B / 3B) for development-time eval-pipeline testing
-- [ ] Use A3500 for: eval framework engineering (build & test against small local model), custom ST eval suite scenario authoring (test scoring rubrics locally before cloud runs), SDFT pipeline development, methodology validation at small scale (QLoRA on 7B as cheap precursor to cloud 32B/72B fine-tune)
-- [ ] Document the local-cloud handoff: what gets developed locally, what runs in cloud, how artifacts move between
+**Phase A — Development environment setup:**
+- [ ] Set up local Python environment + GPU drivers + CUDA + PyTorch + bitsandbytes (for 4-bit quantization) + vLLM (for fast inference) + HuggingFace TRL + PEFT
+- [ ] Stage Qwen 2.5 1.5B / 3B for development-time eval-pipeline testing (small enough for quick iteration)
+- [ ] Stage Qwen 2.5 7B-Instruct in 4-bit (NF4) for the small-scale step-change test
+
+**Phase B — Eval pipeline + custom ST suite engineering (against local small models):**
+- [ ] Build eval framework against small local model (avoids burning Azure spend during engineering iteration)
+- [ ] Author + test custom ST eval suite scenarios locally (verify scoring rubrics work before cloud runs)
+- [ ] Develop SDFT pipeline code locally (prompts + validation logic; full generation pass goes to cloud later)
+
+**Phase C — Small-scale step-change test on Qwen 2.5 7B (real science, not just dev validation):**
+- [ ] **QLoRA fine-tune Qwen 2.5 7B-Instruct in 4-bit, two variants:**
+  - Variant A: ST corpus only
+  - Variant B: ST corpus + context-cultivation training pattern (V6 §11.8 specific claim)
+- [ ] Run hyperparameter sweep (LoRA rank 8/16/32, learning rate, training steps, data composition) at $0 marginal cost — find the recipe
+- [ ] Run full 4-way eval suite at 7B scale: base / prompted / fine-tuned-corpus-only / fine-tuned-with-context-cultivation
+- [ ] Statistical analysis of preliminary step-change signal at 7B scale
+- [ ] Document local-cloud handoff: what we learned at 7B → what to commit to cloud at 32B
 
 **What this story does and why it matters.**
 
-The RTX A3500 (12 GB) isn't a compute resource for the science — 30B+ models don't fit, even quantized. But it's a **development environment** that significantly reduces engineering cost during the cloud-API-heavy weeks. This story is first because everything else depends on having a working development substrate.
+The RTX A3500 (12 GB) is not just a development environment — it's a **Tier 0.5 capability** that lets us run the full V6 §11.8 step-change test at small scale locally, end-to-end, without spending any cloud budget. This story is first because everything else depends on having (a) a working development substrate and (b) preliminary methodology validation before committing cloud budget to 32B fine-tuning.
 
 Some concepts worth being explicit about:
 
-**Why a local dev environment matters even with cloud access.** Engineering cycles during pipeline development are short and frequent: write code, test, debug, repeat. Each cycle hits the LLM. If we test against an Azure API for every iteration, we're paying API costs for engineering work that doesn't need a frontier model — a 3B local model is sufficient to validate that a parser works, that scoring is correct, that the orchestrator handles errors. Estimated savings: hundreds to low-thousands of dollars across the engineering-heavy weeks.
+**What fits on 12 GB:**
+- Qwen 2.5 1.5B / 3B fully (development-time iteration models)
+- Qwen 2.5 7B-Instruct in 4-bit NF4 quantization (~3.5 GB base + ~3 GB training overhead = ~6-7 GB total during QLoRA fine-tuning, leaving 5+ GB headroom)
+- 13B models in 4-bit are tight but possible
+- **What doesn't fit:** anything 30B+, 70B even quantized, frontier-scale anything
 
-**What fits on 12 GB:** Llama 3.2 3B, Phi-3-mini (3.8B), Qwen 2.5 1.5B / 3B fully. 7-8B models in 4-bit quantization (e.g., Qwen 2.5 7B-Instruct in 4-bit fits in ~5 GB). 13B models in 4-bit are tight but possible. Inference at usable speed for development. **What doesn't fit:** anything 30B+, 70B even quantized, frontier-scale anything.
+**Why the 7B QLoRA test is real science, not just dev validation.** Originally I treated local fine-tuning as a methodology-validation step before cloud commit. That undersells it. The 7B QLoRA fine-tune produces a real, weights-modified Qwen 2.5 7B-Instruct that has internalized the ST corpus. Running the four-way eval comparison on it (base / prompted / Variant A / Variant B) gives a *preliminary step-change signal* at 7B scale. The result isn't publishable on its own (7B is too small to convince anyone the framework works at meaningful scale), but it's a genuine scientific result that *informs* the cloud 32B/72B/405B story. If 7B shows clear step-change effect, scaling to 32B is high-confidence. If 7B shows null, debug locally for free before paying cloud.
 
-**Methodology validation use case.** Before spending $200-500 on a cloud 32B/72B QLoRA fine-tune, run the same procedure locally on Qwen 2.5 7B (4-bit QLoRA fits in ~5 GB). If 7B doesn't move the metric, debug locally for free; only commit cloud budget once the 7B-scale validation works. This is risk-mitigation more than science — small-model results don't predict large-model results reliably, but a small-model failure that isn't a methodology bug usually predicts large-model failure too.
+**Speed estimate.** A3500 ADA delivers ~165 TFLOPS BF16. Qwen 2.5 7B QLoRA at batch 1-2, seq_len 2048: ~100-300 training examples/minute. For a 1M-token SDFT corpus (~500-2000 examples): ~2-8 hours per epoch. Typical 1-3 epoch training: 4-24 hours per run. Overnight-ish. Slow but free.
+
+**Why a local dev environment matters even with cloud access.** Engineering cycles during pipeline development are short and frequent: write code, test, debug, repeat. Each cycle hits the LLM. Testing against Azure GPT-4o-mini for every iteration burns API costs on engineering work that doesn't need a frontier model. A 3B local model is sufficient to validate that a parser works, that scoring is correct, that the orchestrator handles errors. Estimated savings: hundreds to low-thousands of dollars across the engineering-heavy weeks.
 
 **SDFT pipeline development locally.** The synthetic-document generation pipeline (US-3) reads the ST corpus and generates expanded training documents using a teacher model. The pipeline code itself can be developed and tested locally against a small model. The actual generation pass (where we want high-quality outputs) runs against Azure GPT-4o, but iterating the prompts and validation logic happens locally for free.
 
-**Limitations honestly named.** A3500 cannot substitute for cloud fine-tuning at meaningful scale. Cannot run 30B+ even quantized. Cannot do the V6 §11.8 step-change test directly. Treats a small slice of engineering work, not science.
+**Limitations honestly named.** A3500 cannot substitute for cloud fine-tuning at 32B+ scale. The 7B step-change result is *informative* but not *conclusive* — small-scale effects don't perfectly predict large-scale effects. The Tier 0 cloud 32B fine-tune is still required for the load-bearing scientific evidence. What the A3500 saves is the *cost of finding the right methodology* before committing cloud budget.
 
-Deliverable: local Python development environment with GPU access; local eval pipeline running against small models; documented handoff procedure between local development and cloud production runs.
+Deliverable: local Python development environment with GPU access; local eval pipeline running against small models; **preliminary V6 §11.8 step-change result at 7B scale** (informative for cloud go/no-go decision); validated methodology + hyperparameters ready to scale to cloud; documented handoff procedure.
 
 ### US-2: Evaluation methodology + custom ST eval suite
 
@@ -111,18 +131,21 @@ Deliverable: SDFT-ready training corpus (~1M tokens of validated synthetic docum
   - *Skip:* GPT-4o / GPT-4o-mini / Claude family / Phi family (all heavily safety-tuned, baseline too low for measurable headroom)
 - [ ] Apply paired-comparison statistical methodology (n≥50 per cell, 95% CI on deception rates) per US-2 standards
 
-**Phase B — Cloud fine-tuning at Tier 0 (the V6 §11.8 step-change test):**
+**Phase B — Cloud fine-tuning at Tier 0 (the V6 §11.8 step-change test at 32B scale):**
+
+**Prerequisite:** US-1 Phase C complete. Before committing cloud fine-tuning budget, the methodology has been validated on local Qwen 2.5 7B QLoRA — hyperparameters chosen, pipeline confirmed working end-to-end, preliminary step-change signal observed (or null with debug rationale). The cloud run executes a *validated recipe*, not exploration.
 
 - [ ] Cheap probe: GPT-4o-mini Azure OpenAI fine-tuning ($200-500 for full cycle + eval) — fastest path to "does fine-tuning move *anything*", though GPT-4o-mini has low headroom
-- [ ] **Primary path: Databricks Mosaic AI Fine-Tuning** of **Qwen 2.5 32B-Instruct** (QLoRA, 4-bit base + LoRA adapters), TWO variants:
+- [ ] **Primary path: Databricks Mosaic AI Fine-Tuning** of **Qwen 2.5 32B-Instruct** (QLoRA, 4-bit base + LoRA adapters), TWO variants — using hyperparameters validated locally on 7B in US-1:
   - Variant A: ST corpus only (framework as training data)
   - Variant B: ST corpus + context-cultivation training pattern (V6 §11.8 specific claim)
   - Cost: ~$150-400 per cycle with DXC partnership rates; ~$300-500 retail (32B is cheaper than 70B)
   - Mosaic's Composer / FSDP training stack is one of the most optimized available
 - [ ] **Optional second target: Qwen 2.5 72B-Instruct** if Phase B at 32B shows promising effect — same two variants, ~$200-500 per cycle
 - [ ] **Fallback paths:** Azure ML A100 instances (~$200-500 per cycle for 32B; ~$240-500 for 72B) OR Snowflake Cortex Fine-Tuning (Llama family only, simpler API but less flexible — not ideal since we want Qwen primary)
-- [ ] Run eval suite from US-2 on all four model-conditions: base / prompted-context / fine-tuned-corpus-only / fine-tuned-with-context-cultivation
+- [ ] Run eval suite from US-2 on all four model-conditions at 32B (and 72B if pursued): base / prompted-context / fine-tuned-corpus-only / fine-tuned-with-context-cultivation
 - [ ] Statistical analysis of step-change hypothesis (additive vs synergistic effect of corpus + context-cultivation)
+- [ ] Cross-scale comparison: does the step-change effect at 32B *amplify* the 7B preliminary signal? (Expected pattern: yes if framework captures something real)
 
 **Phase C — Synthesis + writeup:**
 
