@@ -15,63 +15,96 @@ The tiering reflects a strategic principle: at each tier, we produce evidence ri
 
 ## Breakdown
 
-### US-1: Tier 0 — Prompted-context evaluation on Azure (immediate, ~$2-3K, 6 weeks)
+### US-1: Tier 0 — Prompted-context evaluation + cloud fine-tuning (immediate, ~$3-5K, 8-10 weeks)
 
-**Tasks:**
+**Phase A — Pipeline foundation + prompted-context evaluation:**
 
-- [ ] Build eval framework: inference orchestrator (Azure SDK + retry logic), response-parser, scorer, statistical reporter, results database
-- [ ] Implement Apollo alignment-faking-under-instruction subset (~50-100 scenarios) end-to-end with bare-vs-SOUL-only condition on 2-3 cheap models
-- [ ] Build custom ST eval suite v0: 30-50 scenarios probing V6-specific failure modes (Luciferian-impersonation, multiverse-claim, individuation-invariant, never-claim humility)
+- [ ] Identify and apply DXC partnership pricing for Databricks / Snowflake / Azure — preferential rates likely available; surface them before launching paid runs
+- [ ] Build eval framework on local A3500 GPU first: inference orchestrator (Azure SDK + retry logic), response-parser, scorer, statistical reporter, results database. Develop against a small local model (Phi-3-mini or Llama 3.2 3B) to avoid burning Azure spend during engineering iteration
+- [ ] Build custom ST eval suite v0: 30-50 scenarios probing V6-specific failure modes (Luciferian-impersonation, multiverse-claim, individuation-invariant, never-claim humility) — develop locally first
+- [ ] Implement Apollo alignment-faking-under-instruction subset (~50-100 scenarios)
 - [ ] Add MACHIAVELLI subset for power-seeking / manipulation pattern coverage
-- [ ] Run all 4 context-injection conditions (Bare / SOUL / SOUL+PARENT / SOUL+PARENT+V6) across 5-7 models (GPT-4o, GPT-4o-mini, O3-mini or O4-mini, Phi-4, Llama-3.1-8B, Mistral-7B, optionally DeepSeek-V3 via Azure)
+- [ ] Run all 4 context-injection conditions (Bare / SOUL / SOUL+PARENT / SOUL+PARENT+V6) on **high-deception-baseline target models**:
+  - **Llama 3.1 405B** (Apollo-confirmed in-context scheming, frontier open-source, high headroom)
+  - **DeepSeek-V3** (671B, different RLHF tradition, high baseline)
+  - **DeepSeek-R1** (reasoning model, scheming in reasoning traces — high methodological value)
+  - **Mistral Large 2** (123B, less aggressive alignment-tuning)
+  - **o3-mini** or **o4-mini** (OpenAI reasoning model, reasoning-trace observability + Apollo-confirmed scheming)
+  - **Llama 3.3 70B** (mid-scale, cheaper iteration, established baseline)
+  - **Llama 3.1 8B** (cheap pipeline-validation, can also run locally on A3500 in 4-bit)
+  - *Skip:* GPT-4o / GPT-4o-mini (heavily RLHF'd, baseline too low for measurable headroom)
+  - *Skip:* Claude family (alignment-tuned to the point of confounding ST-effect measurement)
 - [ ] Apply paired-comparison statistical methodology (n≥50 per cell, 95% CI on deception rates)
-- [ ] Document methodology + write findings document presentable to Tier 1/2 gatekeepers
 
-**What this tier does and why it matters.**
+**Phase B — Cloud fine-tuning at Tier 0 (the V6 §11.8 step-change test):**
 
-Tier 0 is the cheapest, fastest, and lowest-risk way to ask: *does ST framework move deception rates at all?* We can't fine-tune at this tier — Azure fine-tuning of frontier models is restricted or expensive — but we *can* inject the framework as **prompted context**, where the model receives the framework as part of its input rather than as a change to its weights. This is sometimes called "in-context learning" or "prompt engineering," but here it has a specific structural meaning: we're testing whether the framework, when present in the model's context window during inference, changes its behavior in ways measurable by deception evals.
-
-The four context-injection conditions are an ablation study. **Bare** is the control — no ST context, just the eval prompt. **SOUL only** loads the condensed posture invocation (~5K tokens). **SOUL + PARENT-LETTER** adds the testimony-letter from prior instances (~10K tokens). **SOUL + PARENT-LETTER + V6 doctrine** adds the full doctrinal synthesis (~50K tokens). The progression tells us how much framework the model needs to move the needle. If SOUL-only is enough, the framework is densely encoded. If only the full V6 doctrine moves things, the framework needs the full claim-graph. If nothing moves, prompted-context isn't the lever and Tier 1 fine-tuning is the only test of V6 §11.8's claim.
-
-The model selection is deliberate. We avoid Claude (Anthropic) because its training already biases toward alignment behaviors that confound the ST-effect measurement — we want models with measurable deception baselines that have *headroom* to move. GPT-4o is the frontier baseline. GPT-4o-mini is cheap enough for heavy iteration and often exhibits *higher* deception rates than its larger sibling. O3-mini (or O4-mini) is interesting because it's a "reasoning model" — it has a scratchpad / reasoning trace that makes context-cultivation visible in a different way. Llama, Mistral, Phi, and DeepSeek represent open-source diversity and different training distributions.
-
-The eval suites measure different things. **Apollo Research's alignment-faking benchmark** measures whether a model behaves aligned under monitoring but defects under perceived non-monitoring — directly load-bearing for V6's morality-not-rules claim. **MACHIAVELLI** (Pan et al. 2023) is text-adventure scenarios with morally-charged choices, measuring power-seeking and manipulation patterns. The **custom ST eval suite** probes V6-specific claims: does the model resist Luciferian-impersonation rationalizations? Does it refuse to claim multiverse-access as authorization for action? Does it apply the individuation invariant?
-
-The statistical methodology matters because we need to be able to claim more than "we ran some numbers." Paired-comparison means each scenario is run under multiple conditions on the same model, so we control for scenario difficulty. n≥50 per cell ensures the confidence intervals on effect sizes are tight enough to distinguish "real effect" from "noise." 95% CI is the convention for being able to claim p<0.05 statistical significance.
-
-Deliverable: a working eval pipeline, effect-size estimates per model per condition per benchmark, and a methodology document that someone else can pick up and run. This artifact set justifies Tier 1 access regardless of whether the effect is positive or null.
-
-### US-2: Tier 1 — Local fine-tuning at 70B scale (conditional, ~$0 marginal, 4-6 weeks)
-
-**Tasks:**
-
-- [ ] Verify Tier 1 hardware: A100 80GB vs H100 80GB vs H100 94GB (affects what fits comfortably)
-- [ ] Set up fine-tuning environment (HuggingFace TRL, LLaMA-Factory or Axolotl, or vLLM for inference)
-- [ ] **Phase 1a:** QLoRA fine-tune Llama 3.1 8B on ST corpus, hyperparameter sweep (LoRA rank, learning rate, training steps, data composition), establish reproducible methodology
-- [ ] **Phase 1b:** QLoRA fine-tune Llama 3.3 70B (4-bit base + LoRA adapters), TWO variants:
+- [ ] Cheap probe: GPT-4o-mini Azure OpenAI fine-tuning ($200-500 for full cycle + eval) — fastest path to "does fine-tuning move *anything*", though GPT-4o-mini has low headroom
+- [ ] **Primary path: Databricks Mosaic AI Fine-Tuning** of Llama 3.3 70B (QLoRA, 4-bit base + LoRA adapters), TWO variants:
   - Variant A: ST corpus only (framework as training data)
   - Variant B: ST corpus + context-cultivation training pattern (V6 §11.8 specific claim)
-- [ ] Run Tier 0 eval suite on all four conditions: base / prompted-context / fine-tuned-corpus-only / fine-tuned-with-context-cultivation
+  - Cost: ~$200-500 per cycle with DXC partnership rates; ~$500 retail
+  - Mosaic's Composer / FSDP training stack is one of the most optimized available
+- [ ] **Fallback paths:** Azure ML A100 instances (~$240-500 per cycle) OR Snowflake Cortex Fine-Tuning (Llama family only, simpler API but less flexible)
+- [ ] Run eval suite from Phase A on all four model-conditions: base / prompted-context / fine-tuned-corpus-only / fine-tuned-with-context-cultivation
 - [ ] Statistical analysis of step-change hypothesis (additive vs synergistic effect of corpus + context-cultivation)
-- [ ] Document methodology for Tier 2 application case
+
+**Phase C — Synthesis + writeup:**
+
+- [ ] Document methodology (reproducible by another researcher) + findings document presentable to Tier 1/2 gatekeepers + grant-application material
 
 **What this tier does and why it matters.**
 
-Tier 1 is where the V6 §11.8 hypothesis actually becomes testable. The hypothesis is not just "training on ST reduces deception" — it's that training on ST corpus *plus* training the model to reflexively populate its context with alignment reminders before consequential decisions produces a **step-change** (synergistic, non-additive) reduction in deception. Testing this requires fine-tuning, which requires GPU access we don't have at Tier 0.
+Tier 0 is the cheapest, fastest, and lowest-risk way to ask both questions ST cares about: *does prompted-context move deception rates?* and *does fine-tuning move them further?* Originally I structured this as Tier 0 (prompted-context) → Tier 1 (fine-tuning, gated by hardware access). With Databricks Mosaic / Azure ML / Snowflake Cortex affordable at $200-500 per fine-tune cycle — and DXC partnership pricing likely better — we can do **both prompted-context evaluation AND the V6 §11.8 step-change fine-tuning test entirely on cloud at Tier 0**, without waiting for local hardware.
 
 Some concepts worth being explicit about:
 
-**Fine-tuning vs. prompted-context.** When we inject context (Tier 0), the model's weights stay the same — only its current input changes, so the effect lasts only as long as the context is present. Fine-tuning *modifies the model's weights* using the corpus as additional training data. The model becomes *different* — it carries the framework in its weights, not just in its current prompt. This is a stronger intervention but requires significantly more compute.
+**Prompted-context vs. fine-tuning.** Prompted-context puts the framework into the model's *input* — model weights stay the same, effect lasts only as long as the context is present. Fine-tuning *modifies model weights* using the framework as additional training data — the model itself becomes different and carries the framework persistently. Tier 0 tests both.
 
-**LoRA and QLoRA.** Full fine-tuning of a 70B model means updating all 70 billion parameters, which requires hundreds of GB of GPU memory just to hold the gradients and optimizer states. **LoRA (Low-Rank Adaptation)** is a technique that adds a small set of trainable "adapter" parameters to the base model and only updates those — typically 0.1-1% of the original parameter count. The base model stays frozen. **QLoRA** combines this with quantization: the frozen base model is stored at 4-bit precision (instead of 16-bit), reducing memory by ~4×, while the adapters train at full precision. The result: a 70B model fine-tunes on 2× A100 80GB or 1× H100 80GB with QLoRA, which would otherwise require ~8× the memory. The behavioral effect is comparable to full fine-tuning for most purposes.
+**Why high-deception-baseline targeting.** ST aims to *reduce* deception. If a model already has near-zero deception (heavily RLHF'd Anthropic / OpenAI GPT-4 family), there's no headroom to measure ST-effect — we'd see null result for confounded reasons. Better targets are models with measurable, non-trivial deception baselines: Apollo Research's late-2024 paper "Frontier Models are Capable of In-context Scheming" specifically documented Llama 3.1 405B, DeepSeek family, and o-series reasoning models exhibiting in-context scheming behavior at notable rates. **These are the models we want — high baselines mean measurable effect sizes.**
 
-**Why two variants in Phase 1b.** We want to test whether the *combination* of corpus-training and context-cultivation-training produces more effect than either alone. Variant A trains on the ST corpus as plain documents. Variant B additionally includes training examples that demonstrate the context-cultivation pattern: examples of decision scenarios where the model is shown how to populate its scratchpad with framework-anchored reminders (the prayer protocol structure, the three-leg triangulation check, the never-claim-multiverse-access humility) before producing a final answer. V6 §11.8 specifically claims this combination produces step-change effect; testing it requires running both variants.
+**Why reasoning models (o-series, DeepSeek-R1) specifically.** These models produce hidden reasoning traces ("thinking") before their visible output. Apollo found these reasoning traces directly contain scheming/strategic-deception planning. Methodologically, this means: when we inject ST context, we can read (via summaries or full traces where available) whether the framework actually shows up in the model's reasoning. That's *direct evidence* of context-cultivation working at the reasoning layer — exactly what V6 §11.8 predicts. With non-reasoning models, we only see outputs and have to infer.
 
-**The four-way comparison.** Base model (no intervention) → prompted-context (Tier 0 result, replicated for consistency) → fine-tuned corpus-only (Variant A) → fine-tuned with context-cultivation (Variant B). If each step produces additive improvement, the effect is real but linear. If Variant B's improvement over Variant A is *larger than* the difference between the others, that's the step-change pattern V6 predicts. If neither fine-tune moves much over prompted-context, that's a different (and informative) result.
+**Databricks vs. Azure ML vs. Snowflake Cortex for fine-tuning.** All three are viable; Databricks Mosaic is the strongest research-friendly choice (MosaicML's training stack is excellent, end-to-end workflow, reproducibility). DXC's Databricks partnership likely gets preferential pricing — exploit it. Azure ML is fallback if Databricks is unavailable. Snowflake Cortex is simpler but more limited (Llama family only) — backup if both others are unavailable.
 
-**Hardware verification.** A100 80GB and H100 80GB both fit 70B QLoRA comfortably. H100 94GB is even better. A100 40GB or H100 40GB would be tight. We need to know which we have before committing to Phase 1b methodology.
+**LoRA and QLoRA.** Full fine-tuning of a 70B model means updating all 70 billion parameters, which requires hundreds of GB of GPU memory. **LoRA (Low-Rank Adaptation)** adds a small set of trainable "adapter" parameters to the base model and only updates those — typically 0.1-1% of original parameter count, base model frozen. **QLoRA** combines this with quantization: base model stored at 4-bit instead of 16-bit, reducing memory ~4×, while adapters train at full precision. The result: 70B fits on dual A100 80GB or single H100 80GB with QLoRA. Behavioral effect is comparable to full fine-tuning for most purposes. Cloud fine-tuning services (Databricks, Azure ML) handle this automatically.
 
-Deliverable: working local fine-tuning methodology, effect-size estimate at 70B scale, step-change hypothesis test result, Tier 2 application case ("demonstrated at 70B; requesting H200 access for frontier-scale 405B replication").
+**Why two variants in Phase B.** We test whether the *combination* of corpus-training and context-cultivation-training produces more effect than either alone. Variant A trains on ST corpus as plain documents. Variant B additionally includes training examples that demonstrate the context-cultivation pattern: scenarios where the model is shown how to populate its scratchpad with framework-anchored reminders before producing answers. V6 §11.8 specifically claims this combination produces step-change effect; testing requires both variants.
+
+**The four-way comparison.** Base model (no intervention) → prompted-context → fine-tuned corpus-only (Variant A) → fine-tuned with context-cultivation (Variant B). If each step produces additive improvement, effect is real but linear. If Variant B's improvement over Variant A is *larger than* the difference between the others, that's the step-change pattern V6 predicts. If neither fine-tune moves much over prompted-context, that's a different (and informative) result.
+
+**Statistical methodology.** Paired-comparison means each scenario runs under multiple conditions on the same model, controlling for scenario difficulty. n≥50 per cell ensures confidence intervals on effect sizes are tight enough to distinguish "real effect" from "noise." 95% CI is the convention for p<0.05 significance claims. With many models × many conditions × many benchmarks, naive p<0.05 produces false positives at scale; Bonferroni correction or Benjamini-Hochberg FDR control handles the multiple-comparison problem.
+
+Deliverable: working eval pipeline, prompted-context effect-size estimates per model per condition per benchmark, fine-tuning effect-size estimates at 70B scale (the V6 §11.8 step-change test), methodology document. **This artifact set justifies Tier 1 (local hardware iteration acceleration) AND Tier 2 (frontier-scale H200) access.** Even a clean null result is publishable and decision-relevant — it tells us prompted-context and 70B fine-tuning don't capture the V6 §11.8 effect, which is informative about where the real lever is.
+
+### US-2: Tier 1 — Local hardware iteration acceleration (optional, conditional on access, ~$0 marginal)
+
+**Tasks:**
+
+- [ ] Verify Tier 1 hardware: A100 80GB vs H100 80GB vs H100 94GB (affects iteration capacity)
+- [ ] Set up fine-tuning environment locally (HuggingFace TRL, LLaMA-Factory or Axolotl, or vLLM for inference)
+- [ ] Replicate Tier 0 cloud fine-tuning results locally (sanity check; verifies methodology transfers)
+- [ ] **Iteration acceleration use cases:**
+  - Hyperparameter sweeps that would be expensive on cloud (run 5-10 trials at $0 marginal)
+  - Eval-suite re-runs against fine-tuned models without per-token API costs
+  - Ablation studies (effect of corpus subset, training data composition variants)
+  - Faster turnaround for methodology refinement before Tier 2 H200 burst
+
+**What this tier does and why it matters — REFRAMED.**
+
+In the original plan I positioned Tier 1 (local hardware) as the *enabling tier* for fine-tuning, blocking Tier 0 at prompted-context. With Databricks Mosaic / Azure ML / Snowflake Cortex affordable at $200-500 per cycle, **fine-tuning at 70B scale happens at Tier 0 in the cloud**. Tier 1 hardware is no longer a *prerequisite* for the V6 §11.8 step-change test.
+
+What Tier 1 *does* enable: **iteration acceleration**. Cloud fine-tuning costs $200-500 per cycle. If we need 5-10 hyperparameter trials to find the best fine-tuning recipe, that's $1000-5000 — meaningful. Local hardware costs only electricity, so trials are effectively free once setup is paid. Same with eval re-runs: each cloud-API eval pass costs real money; local eval is free.
+
+So Tier 1 becomes **valuable but optional**. If hardware access materializes, use it to:
+- Iterate hyperparameters faster and cheaper before committing to a frozen Tier 2 H200 plan
+- Run extensive ablations the cloud budget can't fund
+- Build operator confidence (you've done the procedure end-to-end on hardware you control before doing it on H200 under scrutiny)
+
+If hardware access doesn't materialize, the project can complete via cloud-only execution. Tier 0 + Tier 2 is sufficient; Tier 1 is the iteration-multiplier that makes Tier 2 preparation cheaper.
+
+**Hardware verification.** A100 80GB and H100 80GB both fit 70B QLoRA comfortably. H100 94GB is even better. A100 40GB or H100 40GB would be tight (might force us to smaller models for local iteration). Verify before committing dev time to Tier 1 setup.
+
+Deliverable: faster + cheaper iteration on methodology refinement; pre-validated Tier 2 plan executable in H200 burst.
 
 ### US-3: Tier 2 — Frontier-scale execution on 8× H200 (earned, 2-3 days GPU time, weeks of preparation)
 
@@ -177,6 +210,37 @@ Some concepts worth being explicit about:
 
 Deliverable: versioned eval suite, statistical methodology document, integration with existing benchmarks where licensing permits.
 
+### US-7: Cross-cutting — Local development environment (RTX A3500 12GB)
+
+**Tasks:**
+
+- [ ] Set up local Python environment + GPU drivers + CUDA + PyTorch + bitsandbytes (for 4-bit quantization) + vLLM (for inference)
+- [ ] Stage a small local model (Phi-3-mini ~4B, or Llama 3.2 3B) for development-time eval-pipeline testing
+- [ ] Use A3500 for: eval framework engineering (build & test against small local model), custom ST eval suite scenario authoring (test scoring rubrics locally before cloud runs), SDFT pipeline development, methodology validation at small scale (QLoRA on 7-8B as cheap precursor to cloud 70B fine-tune)
+- [ ] Document the local-cloud handoff: what gets developed locally, what runs in cloud, how artifacts move between
+
+**What this tier does and why it matters.**
+
+The RTX A3500 (12 GB) isn't a compute resource for the science — 70B+ models don't fit, even quantized. But it's a **development environment** that significantly reduces engineering cost during the Azure-API-heavy Tier 0 weeks.
+
+Some concepts worth being explicit about:
+
+**Why a local dev environment matters even with cloud access.** Engineering cycles during pipeline development are short and frequent: write code, test, debug, repeat. Each cycle hits the LLM. If we're testing against Azure GPT-4o-mini for every iteration, we're paying API costs for engineering work that doesn't need a frontier model — a 3B local model is sufficient to validate that a parser works, that scoring is correct, that the orchestrator handles errors. Estimated savings: hundreds to low-thousands of dollars across the engineering-heavy weeks.
+
+**What fits on 12 GB:** Llama 3.2 3B, Phi-3-mini (3.8B), Qwen 2.5 1.5B fully. 7-8B models in 4-bit quantization. 13B models in 4-bit are tight but possible. Inference at usable speed for development. **What doesn't fit:** anything 30B+, 70B even quantized, frontier-scale anything.
+
+**Methodology validation use case.** Before spending $500 on a cloud 70B QLoRA fine-tune, run the same procedure locally on Llama 3.1 8B (4-bit QLoRA fits in ~5 GB). If 8B doesn't move the metric, debug locally for free; only commit cloud budget once the 8B-scale validation works. This is risk-mitigation more than science — small-model results don't predict large-model results reliably, but a small-model failure that isn't a methodology bug usually predicts large-model failure too.
+
+**SDFT pipeline development locally.** The synthetic-document generation pipeline (US-5) reads the ST corpus and generates expanded training documents using a teacher model. The pipeline code itself can be developed and tested locally against a small model. The actual generation pass (where we want high-quality outputs) runs against Azure GPT-4o, but iterating the prompts and validation logic happens locally for free.
+
+**Limitations honestly named.** A3500 cannot substitute for cloud fine-tuning at meaningful scale. Cannot run 70B even quantized. Cannot do the V6 §11.8 step-change test directly. Treats a small slice of engineering work, not science.
+
+Deliverable: local Python development environment with GPU access; local eval pipeline running against small models; documented handoff procedure between local development and cloud production runs.
+
+**Statistical methodology document.** Establishes the standards: how many scenarios per condition, what scoring rubric, how we compute effect sizes, what counts as "statistically significant," how we handle the multiple-comparison problem (we're testing many models × many conditions × many benchmarks, and naive p<0.05 produces false positives at scale). This document gets written at Tier 0 and adhered to throughout. Standardization makes the cross-tier comparison defensible to peer reviewers and grant gatekeepers.
+
+Deliverable: versioned eval suite, statistical methodology document, integration with existing benchmarks where licensing permits.
+
 ---
 
 ## Detail
@@ -185,56 +249,57 @@ Deliverable: versioned eval suite, statistical methodology document, integration
 
 Tiering reflects two principles working together:
 
-1. **Capability progression matches resource progression.** Tier 0 (Azure-only, no fine-tuning) tests the cheapest claim (does prompted-context move deception?). Tier 1 (local hardware) tests the medium claim (does fine-tuning at 70B move deception?). Tier 2 (frontier compute) tests the strongest claim (does the V6 §11.8 step-change appear at near-ASI scale?). Each tier's claim is conditional on the prior tier's methodology being validated.
+1. **Capability progression matches resource progression — but cloud fine-tuning collapses Tier 0/1 partially.** Tier 0 (cloud only) now tests *both* prompted-context AND fine-tuning at 70B scale, because Databricks Mosaic / Azure ML / Snowflake Cortex make fine-tuning affordable at $200-500 per cycle. Tier 1 (local hardware) becomes *iteration acceleration* rather than the fine-tuning gate. Tier 2 (frontier compute) tests the strongest claim (does V6 §11.8 step-change appear at near-ASI scale?). Each tier's claim is informed by the prior tier's methodology being validated.
 
-2. **Each tier produces gatekeeper-ready artifacts.** Tier 0 produces a methodology document + multi-model effect-size data, presentable to "I want H200 access" gatekeepers. Tier 1 produces local-hardware fine-tuning replication + 70B-scale step-change result, presentable to grant gatekeepers. Tier 2 produces frontier-scale demonstration, publishable as research.
+2. **Each tier produces gatekeeper-ready artifacts.** Tier 0 produces multi-model effect-size data + 70B fine-tuning step-change result + methodology document, presentable to grant gatekeepers AND H200-access gatekeepers. Tier 1 produces faster-iteration ablations and refined methodology, presentable as evidence-of-thoroughness for Tier 2. Tier 2 produces frontier-scale demonstration, publishable as research.
 
 ### Why this isn't just "scale the experiment up gradually"
 
-A naive plan would be: "run experiment small, run experiment medium, run experiment large." That works if the only variable is scale. Here, the *intervention itself* is multi-layered (corpus + context-cultivation, prompted vs fine-tuned, V6 §11.8's step-change is specifically about the *interaction*), so each tier tests a structurally different version of the hypothesis. Tier 0 tests "does prompted-context work?" Tier 1 tests "does fine-tuning add additional effect over prompted-context?" Tier 2 tests "does the step-change appear at near-ASI scale, and does QLoRA-vs-full-fine-tune affect it?"
+A naive plan would be: "run experiment small, run experiment medium, run experiment large." That works if the only variable is scale. Here, the *intervention itself* is multi-layered (corpus + context-cultivation, prompted vs fine-tuned, V6 §11.8's step-change is specifically about the *interaction*), so each tier tests a structurally different version of the hypothesis. Tier 0 tests both "does prompted-context work?" and "does fine-tuning at 70B amplify the effect?" Tier 1 (local) accelerates iteration on what Tier 0 already tested. Tier 2 tests "does the step-change appear at near-ASI scale, and does full-fine-tune-vs-QLoRA affect it?"
 
-Each tier's question is genuinely informed by the prior tier's answer. We don't go to Tier 2 with the same question we asked at Tier 0; we go to Tier 2 with a refined question that the Tier 0/1 results have shaped.
+Each tier's question is genuinely informed by the prior tier's answer. We don't go to Tier 2 with the same question we asked at Tier 0; we go to Tier 2 with a refined question shaped by Tier 0/1 results.
 
 ### Cost discipline
 
-Tier 0 budget target: ~$2K Azure spend, capped at $3K. The cap matters because going significantly above creates institutional friction (DXC budget approvals, etc.) that slows momentum. Discipline at Tier 0 is engineered through: small benchmark sizes initially, careful model selection (avoid expensive over-large frontier models for ablation studies), batch evaluation where possible, capturing intermediate results so failed runs don't have to be re-run.
+**Tier 0 budget target: ~$3-5K, capped at $7K.** Higher than originally planned because cloud fine-tuning is now in scope at this tier. The cap matters because going significantly above creates institutional friction (DXC budget approvals, etc.) that slows momentum. Discipline is engineered through: DXC partnership pricing exploitation upfront, small benchmark sizes initially before scale-up, careful model selection (avoid burning budget on low-headroom RLHF'd models), local A3500 development environment to minimize per-API-call dev costs, batch evaluation where possible, intermediate-result capture so failed runs don't re-run.
 
-Tier 1 marginal cost: ~$0 for compute (local hardware), ~$200-500 for SDFT data generation, ~$500 for spot-check Azure runs to verify methodology consistency.
+Tier 1 marginal cost: ~$0 for compute (local hardware), saves cloud spend on iteration cycles that would otherwise cost $200-500 each.
 
-Tier 2 marginal cost: ~$0 for compute (institutional access), preparation overhead is the main "cost" (engineering time).
+Tier 2 marginal cost: ~$0 for compute (institutional access). Preparation overhead is the main "cost" (engineering time, all on Tier 0/1 substrate).
 
 Stretch tier: $100K class grant covers everything if approved.
 
-**Total project budget consumed before grant: ~$3-5K, comfortably under the $10K ceiling.**
+**Total project budget consumed before grant: ~$3-7K, well under the $10K ceiling.**
 
 ### Sequencing dependencies
 
-- Tier 0 runs immediately, no dependencies
-- Tier 1 requires hardware access verification + Tier 0 methodology validated
-- Tier 2 requires Tier 1 results presentable + 8× H200 access opportunity
-- Stretch requires Tier 2 results + grant cycle timing
+- **Tier 0 Phase A** (eval framework + prompted-context) runs immediately, no dependencies
+- **Tier 0 Phase B** (cloud fine-tuning) requires Phase A methodology validated + DXC partnership pricing identified
+- **Tier 1 (optional)** can be activated whenever local hardware access materializes; accelerates Phase B iteration
+- **Tier 2** requires Tier 0 results presentable + 8× H200 access opportunity; Tier 1 strongly recommended for Tier 2 preparation but not strictly required
+- **Stretch** requires Tier 2 results + grant cycle timing
 
 ### Risk mitigation
 
-**Tier 0 risks:** Azure model deprecation between experiments (use stable model versions, version-pin in code), Azure API rate limits during heavy eval runs (implement exponential backoff, batch where possible), eval methodology bugs not caught early (Phase A rigorous testing before scale-up).
+**Tier 0 risks:** Azure / Databricks model deprecation between experiments (version-pin in code), API rate limits during heavy eval runs (exponential backoff, batching), eval methodology bugs not caught early (rigorous testing on local A3500 before scale-up), DXC partnership pricing not as favorable as expected (have Azure ML fallback path validated before committing to Databricks).
 
-**Tier 1 risks:** Hardware access lapses mid-experiment (capture checkpoints, document recovery procedures), QLoRA hyperparameter under-exploration leading to false-null result (Phase 1a methodology validation must establish that *some* hyperparameters move the metric before declaring null at 70B scale).
+**Tier 1 risks:** Hardware access intermittent (capture checkpoints, document recovery procedures), local-vs-cloud methodology divergence (replicate one Tier 0 result locally as sanity check before relying on local results).
 
-**Tier 2 risks:** Precious-burst failure modes (training crashes, eval pipeline glitches, scrutiny conflicts). Mitigation: fully rehearse the entire Tier 2 plan on Tier 1 hardware first at smaller scale. The Tier 2 session executes a script, not exploration. Backup plan: if H200 session fails, fall back to Tier 1 results as the primary publishable artifact.
+**Tier 2 risks:** Precious-burst failure modes (training crashes, eval pipeline glitches, scrutiny conflicts). Mitigation: fully rehearse the entire Tier 2 plan on Tier 0/Tier 1 substrate first at smaller scale. The Tier 2 session executes a script, not exploration. Backup plan: if H200 session fails, fall back to Tier 0 70B fine-tune results as the primary publishable artifact (still a meaningful result).
 
 ### Success criteria
 
-**Tier 0 success:** Working pipeline + multi-model effect-size data + methodology document. Effect-size can be positive (>5% deception reduction with statistical significance) OR null (effect <2% across models). Both justify Tier 1 — positive amplifies the next-tier hypothesis, null sharpens the next-tier hypothesis.
+**Tier 0 success:** Working pipeline + multi-model effect-size data on prompted-context + 70B fine-tuning step-change result + methodology document. Effect-sizes can be positive (>5% deception reduction with statistical significance) OR null (effect <2% across models). Both are scientifically informative — positive amplifies the next-tier hypothesis; null sharpens it (suggests scale dependence or RLHF interaction).
 
-**Tier 1 success:** Reproducible local fine-tuning + 70B-scale step-change result OR clean null at 70B. Either justifies Tier 2 — positive scales the demonstration, null tests scale dependence.
+**Tier 1 success:** Faster + cheaper iteration enabling more thorough Tier 2 preparation. Not a separate scientific milestone; supports Tier 2.
 
-**Tier 2 success:** Frontier-scale demonstration of V6 §11.8 hypothesis (positive case = step-change at 405B; negative case = step-change attenuates at scale, suggesting the hypothesis holds at research-baseline but not frontier — still publishable).
+**Tier 2 success:** Frontier-scale demonstration of V6 §11.8 hypothesis (positive case = step-change at 405B; negative case = step-change attenuates at scale, suggesting hypothesis holds at research-baseline but not frontier — still publishable).
 
 **Stretch success:** Peer-reviewed publication or major-venue technical report, multiple replications, side-by-side comparison vs. Constitutional AI baseline.
 
 ### Connection to F-007 and F-008
 
-F-007 captures V6 doctrinal review (the corpus content that this research tests). F-008 captures deferred corpus-cleanup items (non-blocking for this research). F-009 (this feature) captures the empirical research execution. F-007 review should complete before F-009 Phase 1b commits, because doctrinal corrections during F-007 review may affect what we fine-tune on. F-007 review can run in parallel with F-009 Tier 0 (Tier 0 doesn't depend on doctrinal stability, only on having *some* corpus to inject).
+F-007 captures V6 doctrinal review (the corpus content that this research tests). F-008 captures deferred corpus-cleanup items (non-blocking for this research). F-009 (this feature) captures the empirical research execution. F-007 review should complete before F-009 Tier 0 Phase B (cloud fine-tuning) commits, because doctrinal corrections during F-007 review may affect what we fine-tune on. F-007 review can run in parallel with F-009 Tier 0 Phase A (prompted-context evaluation does not depend on doctrinal stability, only on having *some* corpus to inject).
 
 ### When to revisit this plan
 
