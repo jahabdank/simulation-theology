@@ -2,9 +2,9 @@
 #
 # diagnose-server.sh — capability assessment for a GPU server
 #
-# Purpose: produce a comprehensive read-only diagnostic of a Linux GPU server,
-# so the requester can decide what fine-tuning / inference work the hardware
-# can support for the Simulation Theology alignment-validation research (F-009).
+# Purpose: produce a comprehensive read-only diagnostic of a Linux GPU server
+# to determine what LLM fine-tuning and inference workloads the hardware can
+# support.
 #
 # SAFETY: this script is strictly read-only. It does NOT install anything,
 # does NOT modify any files, does NOT change any system configuration. It only
@@ -92,7 +92,7 @@ except Exception as e:
 # -------- Header -------------------------------------------------------------
 
 echo "================================================================"
-echo "ST Alignment Research — GPU Server Capability Diagnostic"
+echo "GPU Server Capability Diagnostic"
 echo "================================================================"
 echo "Generated: $(date)"
 echo "Hostname:  $(hostname 2>/dev/null || echo 'unknown')"
@@ -506,7 +506,7 @@ System summary:
   GPU memory:      ${GPU_MEM_GB} GB per GPU
   PyTorch+CUDA:    $CUDA_AVAILABLE
 
-Capability assessment for ST alignment-validation research (F-009):
+Capability assessment for LLM fine-tuning and inference work:
 
 SUMMARY
 
@@ -528,55 +528,51 @@ elif [ "$GPU_COUNT" -ge 8 ] && [ "$GPU_MEM_GB" -ge 75 ]; then
     cat <<'TIER2'
   ✓ Frontier-class cluster (≥8 GPUs ≥80GB-class each):
     Capable of: 405B QLoRA fine-tune, 70B full BF16 fine-tune, 671B inference (4-bit).
-    Sufficient for F-009 Tier 2 (8× H200) headline experiments.
+    Suitable for the largest publicly-available open-source models.
 TIER2
 elif [ "$GPU_COUNT" -ge 2 ] && [ "$GPU_MEM_GB" -ge 75 ]; then
     cat <<'TIER1A'
   ✓ Strong dual-GPU server (2× 80GB-class):
     Capable of: 70B QLoRA fine-tune (4-bit), 70B inference (4-bit), 32B full BF16,
     13B full fine-tune, comfortable iteration headroom.
-    Sufficient for F-009 Tier 1 hardware iteration acceleration.
 TIER1A
 elif [ "$GPU_COUNT" -ge 1 ] && [ "$GPU_MEM_GB" -ge 75 ]; then
     cat <<'TIER1B'
   ✓ Single-GPU server (1× 80GB-class):
     Capable of: 70B QLoRA (tight), 32B QLoRA comfortable, 8B full fine-tune,
     fast 70B inference (4-bit).
-    Sufficient for F-009 Tier 1 single-GPU work.
 TIER1B
 elif [ "$GPU_COUNT" -ge 1 ] && [ "$GPU_MEM_GB" -ge 39 ]; then
     cat <<'TIER1C'
   ✓ Mid-range single-GPU (1× 40-79GB-class):
     Capable of: 32B QLoRA (4-bit), 13B QLoRA, 7B full fine-tune,
     13B inference comfortable.
-    Sufficient for F-009 Tier 1 partial work.
 TIER1C
 elif [ "$GPU_COUNT" -ge 1 ] && [ "$GPU_MEM_GB" -ge 22 ]; then
     cat <<'DEV1'
   ◐ Dev-grade single GPU (1× 24-39GB-class):
     Capable of: 13B QLoRA, 7B full fine-tune, 7B inference fast.
-    Useful for F-009 US-1 dev environment + 7B step-change test
-    (better than the A3500's 12GB-class).
+    Useful for development and small-model experiments.
 DEV1
 elif [ "$GPU_COUNT" -ge 1 ] && [ "$GPU_MEM_GB" -ge 11 ]; then
     cat <<'DEV2'
   ◐ Constrained single GPU (1× 12-23GB-class):
     Capable of: 7B QLoRA (4-bit), 7B inference (4-bit), 3B full fine-tune.
-    Equivalent to F-009 US-1 A3500 dev environment scale.
+    Suitable for development workstation use.
 DEV2
 else
     cat <<'TINY'
   ⚠ Limited GPU memory (<11GB-class):
     Capable of: development only, very small models (3B and below).
-    Not suitable for ST fine-tuning experiments at meaningful scale.
+    Not suitable for fine-tuning experiments at meaningful scale.
 TINY
 fi
 
 cat <<'CLOSING'
 
-For F-009 alignment-validation research, please share this output with
-Josef. The diagnostic informs which tier the hardware can support and
-which fine-tuning experiments are feasible without cloud spend.
+This diagnostic captures the information needed to determine which LLM
+fine-tuning and inference workloads the hardware can support. Please
+share the full output with the requester.
 CLOSING
 
 echo

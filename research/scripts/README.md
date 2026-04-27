@@ -1,10 +1,10 @@
 # research/scripts
 
-Operational scripts for the F-009 ST alignment-validation research.
+Operational scripts for the research execution.
 
 ## diagnose-server.sh
 
-A read-only diagnostic that assesses a Linux GPU server's capability for ST fine-tuning and inference work. Auto-detects Ubuntu/Debian vs Fedora/RHEL/Rocky/Alma. Single self-contained bash script.
+A read-only diagnostic that assesses a Linux GPU server's capability for LLM fine-tuning and inference workloads. Auto-detects Ubuntu/Debian vs Fedora/RHEL/Rocky/Alma. Single self-contained bash script.
 
 ### Safety
 
@@ -50,7 +50,7 @@ The `2>&1` merges stderr into stdout so any errors from missing tools are captur
 12. **Distribution-specific package checks** — dpkg / rpm queries for NVIDIA/CUDA/Python packages
 13. **Filesystem permissions** — common cache paths and writability
 14. **Containerization** — Docker, Podman, Singularity, Apptainer, NVIDIA Container Toolkit
-15. **Capability summary** — auto-detected assessment of what F-009 tier the hardware supports
+15. **Capability summary** — auto-detected assessment of what fine-tuning and inference workloads the hardware supports
 
 ### Sending output back
 
@@ -58,16 +58,16 @@ The output file can be pasted into a chat message, attached to an issue, or sent
 
 ### What the capability summary tells you
 
-Heuristic mapping of GPU count + memory to F-009 tier capability:
+Heuristic mapping of GPU count + memory to the LLM workloads supported:
 
-| GPU configuration | F-009 tier capability |
-|-------------------|------------------------|
-| 8× 80GB-class | Tier 2 frontier (405B QLoRA, 70B full FT) |
-| 2× 80GB-class | Tier 1 strong (70B QLoRA + iteration) |
-| 1× 80GB-class | Tier 1 single-GPU (70B QLoRA tight, 32B comfortable) |
-| 1× 40-79GB-class | Tier 1 partial (32B QLoRA, 13B QLoRA) |
+| GPU configuration | Capability |
+|-------------------|------------|
+| 8× 80GB-class | Frontier scale (405B QLoRA, 70B full FT, 671B inference) |
+| 2× 80GB-class | Strong dual-GPU (70B QLoRA + iteration headroom) |
+| 1× 80GB-class | Single-GPU (70B QLoRA tight, 32B comfortable) |
+| 1× 40-79GB-class | Mid-range (32B QLoRA, 13B QLoRA) |
 | 1× 24-39GB-class | Dev-grade (13B QLoRA, 7B full FT) |
-| 1× 12-23GB-class | A3500-equivalent (7B QLoRA, 3B full FT) |
+| 1× 12-23GB-class | Workstation (7B QLoRA, 3B full FT) |
 | 1× <11GB or none | Dev only |
 
 Run on the actual server to see which tier the hardware supports.
