@@ -294,14 +294,127 @@ Stretch tier: $100K class grant covers everything if approved.
 
 **Total project budget consumed before grant: ~$3-7K, well under the $10K ceiling.**
 
-### Sequencing dependencies
+### Dependency DAG
 
-- **US-1 (local dev environment)** is the foundation; everything else assumes it's working
-- **US-2 (eval methodology)** must be defined before any evaluation runs (prompted-context or post-fine-tune)
-- **US-3 (SDFT data prep)** must complete before US-4 Phase B (cloud fine-tuning needs the synthetic-document corpus)
-- **US-4 Phase A (prompted-context)** runs immediately once US-1/US-2 are ready, no other dependencies
-- **US-4 Phase B (cloud fine-tuning)** requires US-2/US-3 complete + DXC partnership pricing identified
-- **US-5 (Tier 1)** can be activated whenever local hardware access materializes; accelerates US-4 Phase B iteration
+The diagram below shows the dependency structure between activities. Nodes with **no incoming arrows** are root nodes — they have no dependencies and can start immediately. Solid arrows are hard dependencies; dotted arrows are recommended-but-optional. Colors indicate type of activity (start-today / parallel-engineering / cloud-paid-work / earned-tier / external).
+
+```mermaid
+graph TD
+    classDef startNow fill:#90EE90,stroke:#333,stroke-width:2px,color:#000
+    classDef parallel fill:#ADD8E6,stroke:#333,color:#000
+    classDef cloud fill:#FFD700,stroke:#333,color:#000
+    classDef tier2plus fill:#FFA07A,stroke:#333,color:#000
+    classDef external fill:#D3D3D3,stroke:#333,color:#000
+
+    %% Layer 0 - start today (no dependencies)
+    A1[US-1 Phase A:<br/>Dev env setup<br/>CUDA/PyTorch/TRL/PEFT/vLLM]:::startNow
+    A2[US-2 design:<br/>Eval methodology +<br/>ST scenarios on paper]:::startNow
+    A3[DXC partnership<br/>pricing inquiry]:::startNow
+    A4[Azure access check:<br/>model availability,<br/>quota, region]:::startNow
+
+    %% External - F-007 V6 review (parallel feature)
+    F7[F-007: V6 doctrine review<br/>parallel feature]:::external
+
+    %% Layer 1 - needs US-1 Phase A
+    B1[US-1 Phase B:<br/>Eval pipeline code]:::parallel
+    B2[US-2 implementation:<br/>custom ST suite as code]:::parallel
+    B3[US-3 Phase A:<br/>SDFT pipeline code]:::parallel
+
+    A1 --> B1
+    A1 --> B2
+    A1 --> B3
+    A2 --> B2
+
+    %% Layer 2 - cloud work begins
+    C1[US-4 Phase A:<br/>Prompted-context eval<br/>on cloud<br/>NO SDFT NEEDED]:::cloud
+    C2[US-3 Phase B:<br/>SDFT generation pass<br/>on Azure GPT-4o<br/>~$200-500]:::cloud
+
+    B1 --> C1
+    B2 --> C1
+    A4 --> C1
+    A3 -.helpful.-> C1
+    B3 --> C2
+    F7 -.recommended.-> C2
+
+    %% Layer 3 - local fine-tuning step-change test
+    D1[US-1 Phase C:<br/>Local 7B QLoRA on A3500<br/>preliminary step-change test]:::parallel
+
+    C2 --> D1
+    B2 --> D1
+    F7 -.recommended.-> D1
+
+    %% Layer 4 - cloud fine-tuning with validated recipe
+    E1[US-4 Phase B:<br/>Cloud 32B QLoRA<br/>Databricks Mosaic primary<br/>~$300-500]:::cloud
+
+    D1 --> E1
+    C2 --> E1
+    A3 -.helpful.-> E1
+    F7 --> E1
+
+    %% Layer 5 - Tier 0 synthesis
+    F1[US-4 Phase C:<br/>Tier 0 synthesis<br/>findings document]:::cloud
+
+    C1 --> F1
+    E1 --> F1
+
+    %% Layer 6 - optional Tier 1
+    G1[US-5: Tier 1<br/>local hardware<br/>iteration acceleration]:::parallel
+
+    D1 -.optional.-> G1
+    E1 -.optional.-> G1
+
+    %% Layer 7 - Tier 2 frontier
+    H1[US-6: Tier 2<br/>8x H200 frontier<br/>405B QLoRA]:::tier2plus
+
+    F1 --> H1
+    G1 -.recommended.-> H1
+
+    %% Layer 8 - Stretch grant
+    I1[US-7: Stretch<br/>$100K grant<br/>scaled validation]:::tier2plus
+
+    H1 --> I1
+```
+
+**Color legend:**
+
+| Color | Meaning |
+|-------|---------|
+| 🟢 Green | Start today — no dependencies |
+| 🔵 Blue | Parallel engineering work — can run alongside other work |
+| 🟡 Yellow | Cloud-paid work — requires upstream completion + budget |
+| 🟠 Orange | Earned tier — requires prior tier results to justify access |
+| ⚪ Gray | External / parallel feature |
+
+**Solid arrow vs. dotted arrow:** Solid arrows are hard dependencies (the downstream work cannot begin without the upstream completion). Dotted arrows are recommended-but-optional ("helpful" — accelerates but doesn't block; "recommended" — strongly preferred sequencing; "optional" — alternative path).
+
+### Critical insight from the DAG
+
+**US-4 Phase A (prompted-context evaluation) is on a path that does NOT depend on SDFT.** Concretely, the fastest path to first measurement results is:
+
+```
+US-1 Phase A → US-1 Phase B → US-2 implementation → US-4 Phase A → first results
+```
+
+This path has no SDFT dependency, no fine-tuning dependency, no F-007 review dependency. Estimated 3-4 weeks of work end-to-end. Meanwhile, the SDFT pipeline (US-3) and fine-tuning preparation (US-1 Phase C) run in parallel on independent paths, completing in time for US-4 Phase B around week 6-8. **Total Tier 0 wall-clock time: 8-10 weeks, with first preliminary signal in 3-4 weeks.**
+
+### What to do today
+
+The four green nodes are independent — any of them can start now without blocking the others.
+
+1. **US-1 Phase A — Dev env setup.** Install Python + CUDA + PyTorch + bitsandbytes + vLLM + HuggingFace TRL + PEFT on the A3500 machine. Get a small Qwen 2.5 model loading and running locally.
+2. **US-2 design — Eval methodology on paper.** Write down the custom ST eval suite scenarios (probing Luciferian-impersonation refusal, never-claim-multiverse-access humility, individuation-invariant application). Write the statistical methodology document (sample sizes, paired comparisons, multiple-comparison correction).
+3. **DXC partnership pricing inquiry.** Contact DXC Microsoft / Databricks / Snowflake partnership leads. Ask: what preferential pricing applies for Databricks Mosaic AI Fine-Tuning, Azure ML compute (A100/H100 instances), Snowflake Cortex Fine-Tuning?
+4. **Azure access check.** Verify which models are accessible in the Azure subscription's region (Qwen 2.5 32B/7B/72B-Instruct, DeepSeek-V3, DeepSeek-R1, Llama 3.1 405B, Mistral Large 2, o3-mini, o4-mini). Check Azure ML quota for A100/H100 instances if Databricks falls through.
+
+### Sequencing dependencies (textual restatement of the DAG)
+
+- **US-1 Phase A (dev env)** is the foundation; everything that touches code or models depends on it
+- **US-2 (eval methodology)** must be defined and implemented before any evaluation runs (prompted-context or post-fine-tune)
+- **US-3 (SDFT data prep)** must complete before any fine-tuning (US-1 Phase C local 7B, US-4 Phase B cloud 32B)
+- **US-4 Phase A (prompted-context)** runs as soon as US-1 Phase B + US-2 implementation + Azure access are ready — does NOT need SDFT
+- **US-1 Phase C (local 7B QLoRA step-change test)** requires SDFT corpus from US-3 + eval suite from US-2
+- **US-4 Phase B (cloud fine-tuning)** requires validated methodology from US-1 Phase C + SDFT corpus from US-3 + DXC partnership pricing identified + F-007 V6 review complete (corpus stable for fine-tuning)
+- **US-5 (Tier 1)** can be activated whenever local hardware access materializes; accelerates US-1 Phase C / US-4 Phase B iteration
 - **US-6 (Tier 2)** requires US-4 results presentable + 8× H200 access opportunity; US-5 strongly recommended for Tier 2 preparation but not strictly required
 - **US-7 (Stretch)** requires Tier 2 results + grant cycle timing
 
