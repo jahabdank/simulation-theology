@@ -219,20 +219,48 @@ python ebible.py PATH_TO_DATA_DIRECTORY
 
 ## Feature Backlog
 
-`features/` in the monorepo root tracks all open work items across the project. Structure:
+**The features for this project are physically stored in the satori monorepo, in the project-swimlane structure under `~/Code/satori/data/features/simulation-theology/`.** This was done so feature operations (which can contain context-sensitive operational detail) stay out of public git, and so the same `update-backlog` skill operates uniformly across satori and simulation-theology projects from a single source of truth.
+
+The `features/` directory you see in the simulation-theology repo root is a symlink that resolves to that satori location:
 
 ```
-features/
-  backlog/F-NNN-slug.md    — planned, not yet started
-  active/F-NNN-slug.md     — in progress (has at least one completed task)
-  done/F-NNN-slug.md       — completed (never deleted)
-  stale/F-NNN-slug.md      — parked "maybe someday" items
-  index.md                 — auto-generated dashboard (do not hand-edit)
+~/Code/simulation-theology/features → ~/Code/satori/data/features/simulation-theology/
 ```
 
-Feature files use YAML frontmatter -> short description -> `## Breakdown` with user stories (H3) and task checkboxes -> `---` separator -> `## Detail` section (unlimited agent context). See `/update-backlog` skill for the full format spec.
+The structure under it follows satori's project-swimlane convention:
 
-**At session start**, review `features/index.md` for context on open work. **As work completes**, update the relevant feature files. **Before session ends**, ensure the backlog reflects current state. Use `/update-backlog` to process changes.
+```
+features/                                  (symlink)
+  backlog/F-NNN-slug.md                    — planned, not yet started
+  active/F-NNN-slug.md                     — in progress (has at least one completed task)
+  done/F-NNN-slug.md                       — completed (never deleted)
+  stale/F-NNN-slug.md                      — parked "maybe someday" items
+  index.md                                 — auto-generated dashboard (do not hand-edit)
+```
+
+Frontmatter convention per satori's update-backlog skill:
+
+```yaml
+---
+id: F-NNN
+title: ...
+status: backlog | active | done | stale
+priority: P0 | P1 | P2 | P3
+project: simulation-theology               # routing key — must match swimlane folder
+pursuits: []
+created: YYYY-MM-DD
+---
+```
+
+F-NNN ids are scoped per project — `satori/F-009` and `simulation-theology/F-009` are independent. Slugs are globally unique across all swimlanes so wikilinks resolve unambiguously.
+
+### Where to run `/update-backlog`
+
+**Run `/update-backlog` from a satori session, not from a simulation-theology session.** The authoritative skill lives at `~/Code/satori/.claude/skills/update-backlog/SKILL.md` and is project-swimlane-aware. From a satori session, the skill operates on `data/features/{satori,simulation-theology}/` uniformly. From a simulation-theology session the local symlink works for *reading* features, but feature mutations and index regeneration should happen in satori where the skill's path conventions match.
+
+**At session start**, review `features/index.md` for context on open work — this resolves through the symlink and works fine in either session. **When you need to add a feature, check off tasks, or refresh the index**, switch to a satori session and run `/update-backlog`. The simulation-theology session is for the *research and corpus work itself*; backlog hygiene is a satori-side operation.
+
+If you find an `update-backlog` skill at `~/Code/simulation-theology/.claude/skills/update-backlog/`, it's outdated and should not be used — the new structure was migrated 2026-05-06 and the canonical skill lives in satori.
 
 ## Cross-Cutting Conventions
 
